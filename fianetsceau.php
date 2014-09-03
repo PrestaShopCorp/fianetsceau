@@ -125,7 +125,7 @@ class FianetSceau extends Module
 		$this->fianetsceau_subcategories = $fianetsceau_subcategories;
 		
 		$this->name = 'fianetsceau';
-		$this->version = '2.8';
+		$this->version = '2.9';
 		$this->tab = 'payment_security';
 		$this->author = 'Fia-Net';
 		$this->displayName = $this->l('Fia-Net - Sceau de Confiance');
@@ -963,9 +963,8 @@ class FianetSceau extends Module
 
 		foreach ($payments as $payment)
 		{
-			$module = Module::getInstanceById($payment['id_module']);
 			$payment_modules[$payment['id_module']] = array(
-				'name' => $module->displayName,
+				'name' => $payment['name'],
 				'fianetsceau_type' => Configuration::get('FIANETSCEAU_'.$payment['id_module'].'_PAYMENT_TYPE'),
 			);
 		}
