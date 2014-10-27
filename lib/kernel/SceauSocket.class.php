@@ -35,7 +35,7 @@ class SceauSocket
 
 	protected $host;
 	protected $port;
-	protected $is_ssl = false;
+	protected $is_ssl = true;
 	protected $method = 'POST';
 	protected $data;
 	protected $path;
@@ -156,11 +156,20 @@ class SceauSocket
 	 */
 	public function connect($header)
 	{
-		//connects with SSL protocol if secure connection asked, HTTP protocol otherwise
-		if ($this->is_ssl)
-			$socket = fsockopen('ssl://'.$this->host, $this->port, $this->errno, $this->errstr, SceauSocket::TIMEOUT);
+		//connects with TLS/SSL protocol if secure connection asked, HTTP protocol otherwise
+		if ($this->is_ssl){
+			$socket = fsockopen('tls://' . $this->host, $this->port, $this->errno, $this->errstr, SceauSocket::TIMEOUT);
+			if($socket == false){
+				insertLogSceau(__METHOD__ . ' : ' . __LINE__, "Connexion TLS échouée, envoi des données impossible sur : " . $this->host);
+				
+				$socket = fsockopen('ssl://' . $this->host, $this->port, $this->errno, $this->errstr, SceauSocket::TIMEOUT);
+				if($socket == false){
+					insertLogSceau(__METHOD__ . ' : ' . __LINE__, "Connexion SSL échouée, envoi des données impossible sur : " . $this->host);
+				}
+			}
+		}
 		else
-			$socket = fsockopen($this->host, $this->port);
+		  $socket = fsockopen($this->host, $this->port);
 
 		//if connection established
 		if ($socket !== false)
