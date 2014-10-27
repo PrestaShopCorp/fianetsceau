@@ -117,6 +117,7 @@ class FianetSceau extends Module
 	const SCEAU_COMMENTS_TABLE_NAME = 'fianetsceau_comments';
 	const SCEAU_MAX_STAR = 5;
 	const SCEAU_MAX_COMMENTS_PER_PAGE = 4;
+	const SCEAU_MAX_CATEGORIES = 15;
 
 	public function __construct()
 	{
@@ -125,7 +126,7 @@ class FianetSceau extends Module
 		$this->fianetsceau_subcategories = $fianetsceau_subcategories;
 		
 		$this->name = 'fianetsceau';
-		$this->version = '2.9';
+		$this->version = '2.10';
 		$this->tab = 'payment_security';
 		$this->author = 'Fia-Net';
 		$this->displayName = $this->l('Fia-Net - Sceau de Confiance');
@@ -732,8 +733,10 @@ class FianetSceau extends Module
 		/** categories configuration * */
 		//lists all product categories and update FIA-NET categories
 		$shop_categories = $this->loadProductCategories();
-		foreach (array_keys($shop_categories) as $id)
-			$this->manageFianetSubCategory($id, Tools::getValue('fianetsceau_'.$id.'_subcategory'), 0, $id_shop);
+		
+		if(count($shop_categories) < self::SCEAU_MAX_CATEGORIES)
+			foreach (array_keys($shop_categories) as $id)
+				$this->manageFianetSubCategory($id, Tools::getValue('fianetsceau_'.$id.'_subcategory'), 0, $id_shop);
 
 		/** update payment means settings * */
 		//list of payment means of the shop
@@ -1089,7 +1092,7 @@ class FianetSceau extends Module
 				WHERE `id_category`= '.(int)$category_id.' 
 					AND `id_shop`= '.(int)$id_shop;
 
-		$query_result = Db::getInstance()->getValue($sql);
+		$query_result = Db::getInstance()->getRow($sql);
 		if ($query_result == false)
 			return false;
 		else
