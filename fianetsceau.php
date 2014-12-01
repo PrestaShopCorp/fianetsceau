@@ -111,10 +111,13 @@ class FianetSceau extends Module
 	private $fianetsceau_subcategories = array();
 
 	const SCEAU_ORDER_TABLE_NAME = 'fianetsceau_order';
+	const SCEAU_ORDER_TABLE_NAME_TEMP = 'fianetsceau_order_temp';
 	const SCEAU_STATE_TABLE_NAME = 'fianetsceau_state';
 	const SCEAU_CATEGORY_TABLE_NAME = 'fianetsceau_category';
 	const SCEAU_PRODUCT_COMMENTS_TABLE_NAME = 'fianetsceau_product_comments';
+	const SCEAU_PRODUCT_COMMENTS_TABLE_NAME_TEMP = 'fianetsceau_product_comments_temp';
 	const SCEAU_COMMENTS_TABLE_NAME = 'fianetsceau_comments';
+	const SCEAU_COMMENTS_TABLE_NAME_TEMP = 'fianetsceau_comments_temp';
 	const SCEAU_MAX_STAR = 5;
 	const SCEAU_MAX_COMMENTS_PER_PAGE = 4;
 	const SCEAU_MAX_CATEGORIES = 15;
@@ -126,7 +129,7 @@ class FianetSceau extends Module
 		$this->fianetsceau_subcategories = $fianetsceau_subcategories;
 		
 		$this->name = 'fianetsceau';
-		$this->version = '2.10';
+		$this->version = '2.11';
 		$this->tab = 'payment_security';
 		$this->author = 'Fia-Net';
 		$this->displayName = $this->l('Fia-Net - Sceau de Confiance');
@@ -160,6 +163,11 @@ class FianetSceau extends Module
 		//create log file
 		SceauLogger::insertLogSceau(__METHOD__.' : '.__LINE__, 'Création du fichier de log');
 
+
+		$orders_saved = $this->saveSceauTables(self::SCEAU_ORDER_TABLE_NAME_TEMP, self::SCEAU_ORDER_TABLE_NAME);
+		$comments_saved = $this->saveSceauTables(self::SCEAU_COMMENTS_TABLE_NAME_TEMP, self::SCEAU_COMMENTS_TABLE_NAME);
+		$comments_product_saved = $this->saveSceauTables(self::SCEAU_PRODUCT_COMMENTS_TABLE_NAME_TEMP, self::SCEAU_PRODUCT_COMMENTS_TABLE_NAME);
+
 		/** database tables creation * */
 		$sqlfile = dirname(__FILE__).'/install.sql';
 		if (!file_exists($sqlfile) || !($sql = Tools::file_get_contents($sqlfile)))
@@ -188,6 +196,9 @@ class FianetSceau extends Module
 			if (!$insert)
 				SceauLogger::insertLogSceau(__METHOD__.' : '.__LINE__, 'Insertion state'.$id.$label.' échouée : '.Db::getInstance()->getMsgError());
 		}
+
+		if($orders_saved && $comments_saved && $comments_product_saved)
+			$this->restoreSceauOrders();
 
 		//tabs creation
 		$tab_admin_id_order = Tab::getIdFromClassName('AdminOrders');
@@ -1485,6 +1496,98 @@ class FianetSceau extends Module
 			SceauLogger::insertLogSceau(__METHOD__.' : '.__LINE__, 'id not found, id added :'.$id);
 			return false;
 		}
+	}
+
+
+	/**
+	 * Check if table table_search exists on database
+	 * 
+	 * @param type array
+	 * @return boolean 
+	 */
+	
+	public function tableExists($table_search)
+	{
+		return Db::getInstance()->ExecuteS('SHOW tables LIKE "'._DB_PREFIX_.pSQL($table_search).'"');
+	}
+
+
+	/**
+	 * Save FianetSceau tables data
+	 * 
+	 * @return boolean 
+	 */
+	public function saveSceauTables($table_temp_name, $table_name)
+	{
+
+		$exist = $this->tableExists($table_name);
+		
+		if($exist)
+		{
+			Db::getInstance()->execute('CREATE TABLE `'._DB_PREFIX_.$table_temp_name.'` LIKE `'._DB_PREFIX_.$table_name.'`');
+			Db::getInstance()->execute('INSERT INTO `'._DB_PREFIX_.$table_temp_name.'` SELECT * FROM `'._DB_PREFIX_.$table_name.'`');
+			SceauLogger::insertLogSceau(__METHOD__.' : '.__LINE__, 'temp table created');
+			return true;
+		}
+		else{
+			SceauLogger::insertLogSceau(__METHOD__.' : '.__LINE__, 'temp table not created');
+			return false;
+		}
+	}
+
+
+	/**
+	 * Restore all orders
+	 * 
+	 */
+	public function restoreSceauOrders()
+	{
+		
+		//restore all sceau orders
+		$sql = 'SELECT * FROM `'._DB_PREFIX_.self::SCEAU_ORDER_TABLE_NAME_TEMP.'`';
+		$query_result = Db::getInstance()->executeS($sql);
+		
+		if($query_result)
+			foreach ($query_result as $value)
+				$this->insertDBElement(array('id_cart' => (int)$value['id_cart'],
+					'id_order' => (int)$value['id_order'],
+					'id_fianetsceau_state' => (int)$value['id_fianetsceau_state'],
+					'customer_ip_address' => $value['customer_ip_address'],
+					'date' => $value['date'],
+					'error' => $value['error']), _DB_PREFIX_.self::SCEAU_ORDER_TABLE_NAME);
+			
+		Db::getInstance()->execute('DROP TABLE IF EXISTS `'._DB_PREFIX_.self::SCEAU_ORDER_TABLE_NAME_TEMP.'`');
+
+		//restore all sceau comments
+		$sql = 'SELECT * FROM `'._DB_PREFIX_.self::SCEAU_COMMENTS_TABLE_NAME_TEMP.'`';
+		$query_result = Db::getInstance()->executeS($sql);
+
+		if($query_result)
+			foreach ($query_result as $value)
+				$this->insertDBElement(array('id_comment' => (int)$value['id_comment'],
+					'id_product' => (int)$value['id_product'],
+					'comment' => (int)$value['comment'],
+					'note' => $value['note'],
+					'firstname' => $value['firstname'],
+					'name' => $value['name'],
+					'state' => $value['state'],
+					'date' => $value['date']), _DB_PREFIX_.self::SCEAU_COMMENTS_TABLE_NAME);
+			
+		Db::getInstance()->execute('DROP TABLE IF EXISTS `'._DB_PREFIX_.self::SCEAU_COMMENTS_TABLE_NAME_TEMP.'`');
+
+
+		//restore all sceau products comments 
+		$sql = 'SELECT * FROM `'._DB_PREFIX_.self::SCEAU_PRODUCT_COMMENTS_TABLE_NAME_TEMP.'`';
+		$query_result = Db::getInstance()->executeS($sql);
+
+		if($query_result)
+			foreach ($query_result as $value)
+				$this->insertDBElement(array('id_product' => (int)$value['id_product'],
+					'global_note' => (int)$value['global_note'],
+					'nb_comments' => (int)$value['nb_comments']), _DB_PREFIX_.self::SCEAU_PRODUCT_COMMENTS_TABLE_NAME);
+			
+		Db::getInstance()->execute('DROP TABLE IF EXISTS `'._DB_PREFIX_.self::SCEAU_PRODUCT_COMMENTS_TABLE_NAME_TEMP.'`');
+
 	}
 
 }
