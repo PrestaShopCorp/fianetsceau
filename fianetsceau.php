@@ -1519,10 +1519,8 @@ class FianetSceau extends Module
 	 */
 	public function saveSceauTables($table_temp_name, $table_name)
 	{
-
-		$exist = $this->tableExists($table_name);
 		
-		if($exist)
+		if($this->tableExists($table_name))
 		{
 			Db::getInstance()->execute('CREATE TABLE `'._DB_PREFIX_.$table_temp_name.'` LIKE `'._DB_PREFIX_.$table_name.'`');
 			Db::getInstance()->execute('INSERT INTO `'._DB_PREFIX_.$table_temp_name.'` SELECT * FROM `'._DB_PREFIX_.$table_name.'`');
