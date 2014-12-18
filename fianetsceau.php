@@ -129,7 +129,7 @@ class FianetSceau extends Module
 		$this->fianetsceau_subcategories = $fianetsceau_subcategories;
 		
 		$this->name = 'fianetsceau';
-		$this->version = '2.11';
+		$this->version = '2.12';
 		$this->tab = 'payment_security';
 		$this->author = 'Fia-Net';
 		$this->displayName = $this->l('Fia-Net - Sceau de Confiance');
