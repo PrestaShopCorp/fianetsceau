@@ -129,7 +129,7 @@ class FianetSceau extends Module
 		$this->fianetsceau_subcategories = $fianetsceau_subcategories;
 		
 		$this->name = 'fianetsceau';
-		$this->version = '2.11';
+		$this->version = '2.13';
 		$this->tab = 'payment_security';
 		$this->author = 'Fia-Net';
 		$this->displayName = $this->l('Fia-Net - Sceau de Confiance');
@@ -357,10 +357,25 @@ class FianetSceau extends Module
 	 * @param int $id_order
 	 * @return string
 	 */
-	private function getCustomerIP($id_order)
+	private function getCustomerIP($id_order, $from_prestashop_data = false)
 	{
-		$sql = 'SELECT `customer_ip_address` FROM `'._DB_PREFIX_.self::SCEAU_ORDER_TABLE_NAME."` WHERE `id_order` = '".(int)$id_order."'";
-		return (Db::getInstance()->getValue($sql));
+		if($from_prestashop_data == true){
+			$sql = "SELECT c.`ip_address` FROM `"._DB_PREFIX_."connections` c 
+			LEFT JOIN `"._DB_PREFIX_."guest` g ON c.id_guest = g.id_guest
+			LEFT JOIN `"._DB_PREFIX_."customer` cu ON cu.id_customer = g.id_customer
+			LEFT JOIN `"._DB_PREFIX_."orders` o ON o.id_customer = cu.id_customer
+			WHERE o.`id_order` = '".(int) $id_order."'";
+
+			$ip_customer = Db::getInstance()->getValue($sql);
+			if($ip_customer)
+				return(long2ip($ip_customer));
+			else
+				return tools::getRemoteAddr();
+		}
+		else{
+			$sql = 'SELECT `customer_ip_address` FROM `'._DB_PREFIX_.self::SCEAU_ORDER_TABLE_NAME."` WHERE `id_order` = '".(int)$id_order."'";
+			return (Db::getInstance()->getValue($sql));
+		}
 	}
 
 	/**
@@ -395,7 +410,7 @@ class FianetSceau extends Module
 	 * @param int $id_order
 	 * @return boolean 
 	 */
-	public function sendXML($id_order)
+	public function sendXML($id_order, $is_old_order = false)
 	{
 		$order = new Order($id_order);
 		$customer = new Customer($order->id_customer);
@@ -425,7 +440,7 @@ class FianetSceau extends Module
 
 		$sceaucontrol->createCustomer('', $civility, $customer->lastname, $customer->firstname, Tools::strtolower($customer->email));
 
-		$order_details = $sceaucontrol->createOrderDetails($id_order, $fianetsceau->getSiteid(), $order->total_paid, 'EUR', $this->getCustomerIP($id_order),
+		$order_details = $sceaucontrol->createOrderDetails($id_order, $fianetsceau->getSiteid(), $order->total_paid, 'EUR', $this->getCustomerIP($id_order, $is_old_order),
 			$order->date_add, $lang);
 
 		//get default FIA-NET category
@@ -471,9 +486,10 @@ class FianetSceau extends Module
 				else
 					$image_url = null;
 			}
-			$image_url = null;
-			$product_name = str_replace("'", '', $product['product_name']);
-			$product_name = str_replace('&', '', $product_name);
+			$image_url = null;	
+			
+			$product_name = str_replace(array('&', "'", 'Ø'), array('', '', ''), $product['product_name']);
+			
 			$productsceau->createProduct($codeean, $reference, $fianet_type, $product_name,
 				(string)$product['product_price_wt'], $image_url);
 		}
@@ -490,19 +506,37 @@ class FianetSceau extends Module
 			if ($resxml->isValid())
 			{
 				//update fianetsceau_state 2:sent
-				$this->updateOrder($id_order, array('id_fianetsceau_state' => '2'));
+				$fianetsceau_state = '2';
+				$resxml = '';
+				
+				if(!$is_old_order)
+					$this->updateOrder($id_order, array('id_fianetsceau_state' => $fianetsceau_state,
+						'mode' => Configuration::get('FIANETSCEAU_STATUS')));
+				
 				SceauLogger::insertLogSceau(__METHOD__.' : '.__LINE__, 'Order '.$id_order.' sended');
 				if (Configuration::get('FIANETSCEAU_CONFIGURATION_OK') === false)
 					Configuration::updateValue('FIANETSCEAU_CONFIGURATION_OK', 1);
-				return true;
 			}
 			else
 			{
 				//update fianetsceau_state 3:error
-				$this->updateOrder($id_order, array('id_fianetsceau_state' => '3'));
+				$fianetsceau_state = '3';
+				if(!$is_old_order)
+					$this->updateOrder($id_order, array('id_fianetsceau_state' => $fianetsceau_state,
+						'error' => $resxml,
+						'mode' => Configuration::get('FIANETSCEAU_STATUS')));
+				
 				SceauLogger::insertLogSceau(__METHOD__.' : '.__LINE__, 'Order '.$id_order.' XML send error');
-				return false;
 			}
+
+			if($is_old_order) //insert order if is an older order
+					$this->insertDBElement(array('id_cart' => (int)$order->id_cart,
+					'id_order' => (int)$id_order,
+					'id_fianetsceau_state' => $fianetsceau_state,
+					'customer_ip_address' => $this->getCustomerIP($id_order, $is_old_order),
+					'date' => $order->date_add,
+					'error' => $resxml,
+					'mode' => Configuration::get('FIANETSCEAU_STATUS')), _DB_PREFIX_.self::SCEAU_ORDER_TABLE_NAME);
 		}
 		else
 		{
@@ -549,14 +583,18 @@ class FianetSceau extends Module
 		$id_order = $params['id_order'];
 
 		//retrieve order's status label
-		$sql = 'SELECT fs.`label` FROM `'._DB_PREFIX_.self::SCEAU_STATE_TABLE_NAME.'` fs INNER JOIN `'._DB_PREFIX_.self::SCEAU_ORDER_TABLE_NAME.'` fo 
+		$sql = 'SELECT fs.`label`, fo.`mode`, fo.`error` FROM `'._DB_PREFIX_.self::SCEAU_STATE_TABLE_NAME.'` fs INNER JOIN `'._DB_PREFIX_.self::SCEAU_ORDER_TABLE_NAME.'` fo 
 				ON fo.`id_fianetsceau_state`=fs.`id_fianetsceau_state` 
 			WHERE  fo.`id_order`='.(int)$id_order;
 
-		$order_state_label = Db::getInstance()->getValue($sql);
+		$sql_result = Db::getInstance()->getRow($sql);
+		
+		$order_state_label = $sql_result['label'];
+		$order_mode = $sql_result['mode'];
+		$order_error = $sql_result['error'];
 
 		//if label exist, we load the corresponding tpl
-		if (!($order_state_label === false))
+		if (!($order_state_label === false) && !is_null($order_state_label))
 		{
 			$tpl_name = preg_replace('#[^a-zA-Z0-9]#', '_', $order_state_label);
 
@@ -574,6 +612,8 @@ class FianetSceau extends Module
 				'link' => $link,
 				'resend_img' => __PS_BASE_URI__.'modules/'.$this->name.'/img/sceauresend14.png',
 				'logo_img' => __PS_BASE_URI__.'modules/'.$this->name.'/img/logo.gif',
+				'order_mode' => $order_mode,
+				'order_error' => $order_error,
 			));
 
 			return $this->display(__FILE__, '/views/templates/admin/'.$tpl_name.'.tpl');
@@ -582,9 +622,12 @@ class FianetSceau extends Module
 		{
 			//if label doesn't exist, we load nosend.tpl, order was sent before FIA-NET Sceau installation
 			$img = 'error.gif';
+			$link = 'index.php?tab=AdminSceau&action=ResendOrder&id_order='.(int)$id_order.'&token='.Tools::getAdminTokenLite('AdminSceau').'&old_order=true';
 			$this->smarty->assign(array(
 				'fianetsceau_img' => __PS_BASE_URI__.'modules/'.$this->name.'/img/'.$img,
 				'logo_img' => __PS_BASE_URI__.'modules/'.$this->name.'/img/logo.gif',
+				'link' => $link,
+				'resend_img' => __PS_BASE_URI__.'modules/'.$this->name.'/img/sceauresend14.png',
 			));
 			return $this->display(__FILE__, '/views/templates/admin/nosend.tpl');
 		}
@@ -977,9 +1020,10 @@ class FianetSceau extends Module
 
 		foreach ($payments as $payment)
 		{
-			$payment_modules[$payment['id_module']] = array(
+			$mod = Module::getInstanceByName($payment['name']);
+			$payment_modules[$mod->id] = array(
 				'name' => $payment['name'],
-				'fianetsceau_type' => Configuration::get('FIANETSCEAU_'.$payment['id_module'].'_PAYMENT_TYPE'),
+				'fianetsceau_type' => Configuration::get('FIANETSCEAU_'.$mod->id.'_PAYMENT_TYPE'),
 			);
 		}
 		return $payment_modules;
@@ -1032,7 +1076,7 @@ class FianetSceau extends Module
 	 */
 	private function loadProductCategories()
 	{
-		$categories = Category::getSimpleCategories($this->context->language->id);
+		$categories = Category::getHomeCategories($this->context->language->id);
 
 		if (_PS_VERSION_ < '1.5')
 			$id_shop = 1;
@@ -1552,7 +1596,8 @@ class FianetSceau extends Module
 					'id_fianetsceau_state' => (int)$value['id_fianetsceau_state'],
 					'customer_ip_address' => $value['customer_ip_address'],
 					'date' => $value['date'],
-					'error' => $value['error']), _DB_PREFIX_.self::SCEAU_ORDER_TABLE_NAME);
+					'error' => $value['error'],
+					'mode' => $value['mode']), _DB_PREFIX_.self::SCEAU_ORDER_TABLE_NAME);
 			
 		Db::getInstance()->execute('DROP TABLE IF EXISTS `'._DB_PREFIX_.self::SCEAU_ORDER_TABLE_NAME_TEMP.'`');
 

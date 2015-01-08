@@ -27,5 +27,6 @@
 	<fieldset>
 		<legend><img src="{$logo_img|escape:'htmlall'}" width="16" height="16" alt=""/>{l s='FIA-NET Sceau status' mod='fianetsceau'}</legend>
 		<img src="{$fianetsceau_img|escape:'htmlall'}" alt=""/>{l s='The order was placed before the module installation FIA-NET.' mod='fianetsceau'}
+		<p><a href="{$link|strval}"><img width="16" height="16" src="{$resend_img|escape:'htmlall'}" alt=""/>{l s='Resend order' mod='fianetsceau'}</a></p>
 	</fieldset>
 </div>
