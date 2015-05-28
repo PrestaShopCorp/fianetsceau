@@ -64,7 +64,7 @@ class AdminSceau extends AdminSceauController
 		}
 
 		//build sql query which added to sql query of AdminOrders class
-		$this->_select .= ', fs.`label` as `fs_label`';
+		$this->_select .= ', fs.`label` as `fs_label`, fo.`mode` as `fo_mode`';
 		$this->_join .= 'LEFT JOIN `'._DB_PREFIX_.'fianetsceau_order` fo ON a.`id_order` = fo.`id_order`';
 		$this->_join .= 'LEFT JOIN `'._DB_PREFIX_.'fianetsceau_state` fs ON fo.`id_fianetsceau_state` = fs.`id_fianetsceau_state`';
 
@@ -74,7 +74,7 @@ class AdminSceau extends AdminSceauController
 				'sent' => array('src' => '../../modules/fianetsceau/img/sent.gif', 'alt' => 'Commande envoyée'),
 				'waiting payment' => array('src' => '../../modules/fianetsceau/img/waiting.gif', 'alt' => 'Commande en attente de paiement'),
 				'error' => array('src' => '../../modules/fianetsceau/img/not_concerned.png', 'alt' => 'Commande en erreur'),
-				'default' => '../../modules/fianetsceau/img/error.gif');
+				'default' => array('src' => '../../modules/fianetsceau/img/error.gif', 'alt' => 'Non concernée'));
 		else
 			$icons = array(
 				'sent' => '../../modules/fianetsceau/img/sent.gif',
@@ -85,13 +85,21 @@ class AdminSceau extends AdminSceauController
 		//personalize new column added in new order tab
 		$column_definition = array(
 			'title' => $this->l('Sceau state'), //column name
-			'width' => 50,
+			'width' => 25,
 			'icon' => $icons);
+		
+		$column_definition2 = array(
+			'title' => $this->l('Mode'), //column name
+			'width' => 25);
 
-		if (_PS_VERSION_ >= '1.5')
+		if (_PS_VERSION_ >= '1.5'){
 			$this->fields_list['fs_label'] = $column_definition;
-		else
+			$this->fields_list['fo_mode'] = $column_definition2;
+		}	
+		else{
 			$this->fieldsDisplay['fs_label'] = $column_definition;
+			$this->fieldsDisplay['fo_mode'] = $column_definition2;
+		}
 
 		$this->module = Module::getInstanceByName('fianetsceau');
 	}
@@ -112,7 +120,12 @@ class AdminSceau extends AdminSceauController
 			//resends an order that would have been sent
 			case 'ResendOrder':
 				//sends the order given in param
-				$this->module->sendXML(Tools::getValue('id_order'));
+
+				if(Tools::getValue('old_order') == true)
+					$this->module->sendXML(Tools::getValue('id_order'), true);
+				else
+					$this->module->sendXML(Tools::getValue('id_order'));
+				
 				if (_PS_VERSION_ < '1.5')
 				{
 					$admin_dir = Tools::getShopDomainSsl(true, true).__PS_BASE_URI__.Tools::substr(_PS_ADMIN_DIR_, strrpos(_PS_ADMIN_DIR_, '/') + 1);
