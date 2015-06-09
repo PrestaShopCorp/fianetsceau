@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS `PREFIX_SCEAU_ORDER_TABLE_NAME` (
 	`customer_ip_address` varchar(15),
 	`date` varchar(20),
 	`error` varchar(255),
+	`mode` varchar(10),
 PRIMARY KEY (`id_cart`)
 ) ENGINE=MyISAM  DEFAULT CHARSET=utf8;
 

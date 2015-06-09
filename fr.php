@@ -3,6 +3,7 @@
 global $_MODULE;
 $_MODULE = array();
 $_MODULE['<{fianetsceau}prestashop>adminsceau_a4661664cd1a7c89e8af339df1bfa0fd'] = 'Etat Sceau';
+$_MODULE['<{fianetsceau}prestashop>adminsceau_650be61892bf690026089544abbd9d26'] = 'Mode';
 $_MODULE['<{fianetsceau}prestashop>fianetsceau_491619b78136b7ce10a3c603cf964bdd'] = 'Fia-Net - Sceau de Confiance';
 $_MODULE['<{fianetsceau}prestashop>fianetsceau_76c3b678f626c3858c3c98baac90c7ac'] = 'Transformez vos visiteurs en acheteurs en créant la confiance sur votre site.';
 $_MODULE['<{fianetsceau}prestashop>fianetsceau_75c0304da615c6377264b067e007bda0'] = 'Pour fonctionner correctement dans PrestaShop v1.4, le module FIA-NET Sceau de Confiance requiert au moins la version v0.3 du module de compatibilité.';
@@ -51,8 +52,10 @@ $_MODULE['<{fianetsceau}prestashop>error_1e16ce8226aa53931c3ea442ae2a3fbf'] = 'L
 $_MODULE['<{fianetsceau}prestashop>error_725675d8b260205f5015e515a1bc6938'] = 'Renvoyer la commande';
 $_MODULE['<{fianetsceau}prestashop>nosend_3e6838f3bd7e17bd880239af52265e15'] = 'Etat FIA-NET Sceau';
 $_MODULE['<{fianetsceau}prestashop>nosend_1da82dcb488777f57c1ca6650eea1a02'] = 'La commande a été réalisée avant l\'installation du module.';
+$_MODULE['<{fianetsceau}prestashop>nosend_725675d8b260205f5015e515a1bc6938'] = 'Renvoyer la commande';
 $_MODULE['<{fianetsceau}prestashop>sent_3e6838f3bd7e17bd880239af52265e15'] = 'Etat FIA-NET Sceau';
 $_MODULE['<{fianetsceau}prestashop>sent_d41eb7913bba0226ccff5e720d52222d'] = 'La commande a correctement été envoyée à FIA-NET';
+$_MODULE['<{fianetsceau}prestashop>sent_725675d8b260205f5015e515a1bc6938'] = 'Renvoyer la commande';
 $_MODULE['<{fianetsceau}prestashop>waiting_payment_3e6838f3bd7e17bd880239af52265e15'] = 'Etat FIA-NET Sceau';
 $_MODULE['<{fianetsceau}prestashop>waiting_payment_cf74958a5b709446156546623344d0e7'] = 'La commande n\'a pas été envoyée à FIA-NET.';
 $_MODULE['<{fianetsceau}prestashop>waiting_payment_7db21b85601e1bc4831732a36917a833'] = 'Vous devez confirmer le paiement avant de l\'envoyer.';

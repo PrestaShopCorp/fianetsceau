@@ -28,5 +28,11 @@
 	<fieldset>
 		<legend><img src="{$logo_img|escape:'htmlall'}" width="16" height="16" alt=""/>{l s='FIA-NET Sceau status' mod='fianetsceau'}</legend>
 		<img src="{$fianetsceau_img|escape:'htmlall'}" alt=""/>{l s='The order has been correctly sent to Fia-Net.' mod='fianetsceau'}
+
+		{if $order_mode eq 'test' || $order_mode eq 'prod'}({$order_mode|escape:'htmlall'}){/if}
+		
+		{if $order_mode eq 'test' ||  $order_mode eq ''}
+			<p><a href="{$link|strval}"><img width="16" height="16" src="{$resend_img|escape:'htmlall'}" alt=""/>{l s='Resend order' mod='fianetsceau'}</a></p>
+		{/if}
 	</fieldset>
 </div>
